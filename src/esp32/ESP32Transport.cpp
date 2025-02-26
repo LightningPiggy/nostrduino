@@ -43,8 +43,8 @@ void esp32::ESP32Transport::getInvoiceFromLNAddr(NostrString addr, unsigned long
             return;
         }
         NostrString status = doc["status"];
-        if (!NostrString_equals(status, "OK")) {
-            Utils::log("LNURLP status not OK");
+        if (status != "" && !NostrString_equals(status, "OK")) {
+            Utils::log("LNURLP status is set but not OK");
             cb("");
             return;
         }
@@ -75,8 +75,8 @@ void esp32::ESP32Transport::getInvoiceFromLNAddr(NostrString addr, unsigned long
                 return;
             }
             NostrString callbackStatus = doc["status"];
-            if (!NostrString_equals(callbackStatus, "OK")) {
-                Utils::log("LNURLP callback status not OK");
+            if (callbackStatus != "" && !NostrString_equals(callbackStatus, "OK")) {
+                Utils::log("LNURLP callback status is set but not OK");
                 cb("");
                 return;
             }
@@ -182,6 +182,25 @@ esp32::ESP32Connection::ESP32Connection(ESP32Transport *transport, NostrString u
             for (auto &listener : connectionListeners) {
                 try {
                     listener(ConnectionStatus::ERROR);
+                } catch (std::exception &e) {
+                    Utils::log(e.what());
+                }
+            }
+            break;
+        case WStype_FRAGMENT_TEXT_START:
+            Utils::log("Fragmented message start.");
+            this->fragmentedMessage = NostrString_fromChars((char *)payload);
+            break;
+        case WStype_FRAGMENT:
+            Utils::log("Fragmented message continued.");
+            this->fragmentedMessage += NostrString_fromChars((char *)payload);
+            break;
+        case WStype_FRAGMENT_FIN:
+            Utils::log("Fragmented message finalized.");
+            this->fragmentedMessage += NostrString_fromChars((char *)payload);
+            for (auto &listener : messageListeners) {
+                try {
+                    listener(this->fragmentedMessage);
                 } catch (std::exception &e) {
                     Utils::log(e.what());
                 }
