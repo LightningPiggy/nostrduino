@@ -18,11 +18,11 @@ class NWCResponseCallbackBase {
   public:
     virtual ~NWCResponseCallbackBase() = default;
     virtual void call(Nip47 *nip47, SignedNostrEvent *ev) {}
+    virtual unsigned int getN() const = 0; // Added to access n polymorphically
     std::function<void(NostrString, NostrString)> onErr = nullptr;
     unsigned long long timestampSeconds;
     NostrString eventId;
     NostrString subId;
-    unsigned int n = 1;
 };
 
 template <typename T> class NWCResponseCallback : public NWCResponseCallbackBase {
@@ -40,34 +40,10 @@ template <typename T> class NWCResponseCallback : public NWCResponseCallbackBase
             }
         }
     }
+    unsigned int getN() const override { return n; } // Implement getN()
     std::function<void(T)> onRes = nullptr;
+    unsigned int n = 1;
 };
-
-/*
-struct NWCResponseCallbackBase {
-    virtual ~NWCResponseCallbackBase() = default;
-    virtual void call(Nip47 *nip47, SignedNostrEvent *event) = 0;
-};
-
-template <typename T>
-struct NWCResponseCallback : public NWCResponseCallbackBase {
-    std::function<void(T)> onRes;
-    std::function<void(NostrString, NostrString)> onErr;
-    unsigned long timestampSeconds;
-    NostrString eventId;
-    int n;
-    NostrString subId;
-    void call(Nip47 *nip47, SignedNostrEvent *event) { // Assumed method
-        Nip47Response<T> out;
-        nip47->parseResponse(event, out);
-        if (NostrString_length(out.errorCode) > 0) {
-            if (onErr) onErr(out.errorCode, out.errorMessage);
-        } else {
-            if (onRes) onRes(out.result);
-        }
-    }
-};
-*/
 
 /**
  * A class to interact with the Nostr Wallet Connect services without dealing with the underlying transport
@@ -189,6 +165,7 @@ class NWC {
     void subscribeNotifications(std::function<void(NotificationResponse)> onRes, std::function<void(NostrString, NostrString)> onErr);
 
   private:
+    NostrString notificationSubId;
     Transport *transport;
     NostrString sendEvent(SignedNostrEvent *ev);
     std::unique_ptr<NostrPool> pool;

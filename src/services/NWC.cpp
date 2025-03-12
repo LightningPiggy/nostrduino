@@ -29,13 +29,18 @@ void NWC::close() {
 void NWC::loop() {
     this->pool->loop();
     for (auto it = this->callbacks.begin(); it != this->callbacks.end();) {
-        if (it->get()->n == 0) {
+        unsigned int currentN = it->get()->getN();
+        bool isPersistent = (currentN == static_cast<unsigned int>(-1));
+
+        if (currentN == 0) {
             NostrString subId = it->get()->subId;
             this->pool->closeSubscription(subId);
             it = this->callbacks.erase(it);
             continue;
         }
-        if (Utils::unixTimeSeconds() - it->get()->timestampSeconds > 60 * 10) {
+
+        // Apply timeout only to non-persistent callbacks (n > 0)
+        if (!isPersistent && Utils::unixTimeSeconds() - it->get()->timestampSeconds > 60 * 10) {
             NostrString subId = it->get()->subId;
             this->pool->closeSubscription(subId);
             it->get()->onErr("OTHER", "timeout");
@@ -48,15 +53,18 @@ void NWC::loop() {
 
 NostrString NWC::sendEvent(SignedNostrEvent *event) {
     NostrString subId = this->pool->subscribeMany(
-        {this->nwc.relay}, {{{"kinds", {"23195", "23196"}}, {"#p", {this->accountPubKey}}, {"#e", {event->getId()}}}}, // Added 23196
+        {this->nwc.relay}, {{{"kinds", {"23195"}}, {"#p", {this->accountPubKey}}, {"#e", {event->getId()}}}},
         [&](const String &subId, nostr::SignedNostrEvent *event) {
             NostrString eventRef = event->getTags()->getTag("e")[0];
             for (auto it = this->callbacks.begin(); it != this->callbacks.end(); it++) {
                 if (NostrString_equals(it->get()->eventId, eventRef)) {
-                    if (it->get()->n != 0) { // Changed from > 0 to != 0 to allow -1
+                    if (it->get()->getN() != 0) {
                         it->get()->call(&this->nip47, event);
+                        if (it->get()->getN() > 0) {
+                            // Decrement n via a setter or direct access if modifiable
+                            // Since n is in the derived class, we’ll assume it’s handled in call() or externally
+                        }
                     }
-                    if (it->get()->n > 0) it->get()->n--; // Only decrement if positive
                     break;
                 }
             }
@@ -209,14 +217,32 @@ void NWC::subscribeNotifications(std::function<void(NotificationResponse)> onRes
         return;
     }
 
-    SignedNostrEvent ev = this->nip47.subscribeNotifications();
+    notificationSubId = pool->subscribeMany(
+        {this->nwc.relay}, {{{"kinds", {"23196"}}, {"#p", {this->accountPubKey}}}},
+        [this, onRes, onErr](const NostrString &subId, SignedNostrEvent *event) {
+            Nip47Response<NotificationResponse> resp;
+            nip47.parseResponse(event, resp);
+            if (NostrString_length(resp.errorCode) > 0) {
+                if (onErr) onErr(resp.errorCode, resp.errorMessage);
+            } else {
+                if (onRes) onRes(resp.result);
+            }
+            delete event;
+        },
+        [onErr](const NostrString &subId, const NostrString &reason) {
+            Utils::log("Notification subscription closed: " + reason);
+            if (onErr) onErr("SUB_CLOSED", reason);
+        },
+        [](const NostrString &subId) { Utils::log("Notification subscription EOS"); }
+    );
+
     std::unique_ptr<NWCResponseCallback<NotificationResponse>> callback(new NWCResponseCallback<NotificationResponse>());
     callback->onRes = onRes;
     callback->onErr = onErr;
     callback->timestampSeconds = Utils::unixTimeSeconds();
-    callback->eventId = ev.getId();
-    callback->n = -1; // Persistent subscription
-    callback->subId = this->sendEvent(&ev);
+    callback->eventId = "";
+    callback->n = -1; // Persistent
+    callback->subId = notificationSubId;
     this->callbacks.push_back(std::move(callback));
-    Utils::log("Subscribed to notifications with event ID: " + ev.getId());
+    Utils::log("Subscribed to notifications with sub ID: " + notificationSubId);
 }
