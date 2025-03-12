@@ -495,13 +495,6 @@ void Nip47::parseNWC(NostrString nwc, NWCData &data) {
     }
 }
 
-SignedNostrEvent Nip47::subscribeNotifications() {
-    JsonDocument doc;
-    JsonObject params = doc["params"].to<JsonObject>();
-    // No specific params needed for subscription per NIP-47
-    return this->createEvent("subscribe_notifications", doc); // Kind 23194 event
-}
-
 void Nip47::parseResponse(SignedNostrEvent *response, Nip47Response<NotificationResponse> &out) {
     out.errorCode = "";
     out.errorMessage = "";

@@ -164,7 +164,6 @@ class Nip47 {
     SignedNostrEvent listTransactions(unsigned long from = 0, unsigned long until = 0, int limit = 0, int offset = 0, bool unpaid = false, NostrString type = "");
     SignedNostrEvent getBalance();
     SignedNostrEvent getInfo();
-    SignedNostrEvent subscribeNotifications();
 
     void parseResponse(SignedNostrEvent *response, Nip47Response<PayInvoiceResponse> &out);
     void parseResponse(SignedNostrEvent *response, Nip47Response<MultiPayInvoiceResponse> &out);
