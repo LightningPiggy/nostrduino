@@ -194,3 +194,12 @@ void NWC::getInfo(std::function<void(GetInfoResponse)> onRes, std::function<void
     callback->subId = this->sendEvent(&ev);
     this->callbacks.push_back(std::move(callback));
 }
+
+void NWC::subscribeToNotifications(std::function<void(nostr::Nip47Notification)> onNotification) {
+    if (!pool || pool->getRelays().empty()) {
+        Utils::log("Cannot subscribe to notifications: No relays available");
+        return;
+    }
+
+    nip47.subscribeToNotifications(*pool, accountPubKey, onNotification);
+}

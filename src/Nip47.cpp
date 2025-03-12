@@ -494,3 +494,91 @@ void Nip47::parseNWC(NostrString nwc, NWCData &data) {
         }
     }
 }
+
+void Nip47::subscribeToNotifications(NostrPool& pool, NostrString userPubKey, std::function<void(Nip47Notification)> onNotification) {
+    this->notificationCallback = onNotification;
+
+    pool.subscribeMany(
+        {pool.getRelays()[0]},
+        {{{"kinds", {"23196"}}, {"#p", {userPubKey}}}},
+        [this](const NostrString& subId, SignedNostrEvent* event) {
+            this->handleNotification(event);
+        },
+        [](const NostrString& subId, const NostrString& reason) {
+            Utils::log("Notification subscription closed: " + reason);
+        },
+        [](const NostrString& subId) {
+            Utils::log("Notification subscription EOS");
+        }
+    );
+    Utils::log("Subscribed to NIP-47 notifications for pubkey: " + userPubKey);
+}
+
+// Handle incoming kind 23196 notification events
+void Nip47::handleNotification(SignedNostrEvent* event) {
+    if (event->getKind() != 23196) {
+        Utils::log("Unexpected event kind in notification handler: " + NostrString_intToString(event->getKind()));
+        return;
+    }
+
+    if (!event->verify()) {
+        Utils::log("Notification event verification failed");
+        return;
+    }
+
+    NostrString content;
+    try {
+        content = this->nip04.decrypt(this->userPrivKey, this->servicePubKey, event->getContent());
+    } catch (const std::exception& e) {
+        Utils::log("Failed to decrypt notification content: " + NostrString(e.what()));
+        return;
+    }
+
+    if (NostrString_length(content) == 0) {
+        Utils::log("Decrypted notification content is empty");
+        return;
+    }
+
+    StaticJsonDocument<1024> doc; // Increased size to handle larger JSON
+    DeserializationError error = deserializeJson(doc, content);
+    if (error) {
+        Utils::log("Failed to parse notification JSON: " + NostrString(error.c_str()));
+        return;
+    }
+
+    // Use "notification_type" instead of "method"
+    NostrString method = doc["notification_type"] | "";
+    if (NostrString_length(method) == 0) {
+        Utils::log("Notification missing 'notification_type' field");
+        return;
+    }
+
+    JsonObject notification = doc["notification"];
+    if (!notification) {
+        Utils::log("Notification missing 'notification' object");
+        return;
+    }
+
+    if (NostrString_equals(method, "payment_received")) {
+        PaymentReceivedParams pr;
+        pr.amount = notification["amount"] | 0ULL;
+        pr.paymentHash = notification["payment_hash"] | "";
+        pr.sender = notification["description"] | ""; // Adjust based on your needs (see below)
+        Nip47Notification nip47Notification(method, pr);
+        if (this->notificationCallback) {
+            this->notificationCallback(nip47Notification);
+        }
+    } else if (NostrString_equals(method, "payment_sent")) {
+        PaymentSentParams ps;
+        ps.amount = notification["amount"] | 0ULL;
+        ps.paymentHash = notification["payment_hash"] | "";
+        ps.recipient = notification["description"] | ""; // Adjust as needed
+        Nip47Notification nip47Notification(method, ps);
+        if (this->notificationCallback) {
+            this->notificationCallback(nip47Notification);
+        }
+    } else {
+        Utils::log("Unknown notification type: " + method);
+    }
+}
+

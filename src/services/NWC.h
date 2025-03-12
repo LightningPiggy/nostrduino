@@ -158,6 +158,8 @@ class NWC {
      */
     void getInfo(std::function<void(GetInfoResponse)> onRes = nullptr, std::function<void(NostrString, NostrString)> onErr = nullptr);
 
+    void subscribeToNotifications(std::function<void(nostr::Nip47Notification)> onNotification);
+
   private:
     Transport *transport;
     NostrString sendEvent(SignedNostrEvent *ev);

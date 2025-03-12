@@ -6,9 +6,112 @@
 #include "NostrEvent.h"
 #include "NostrString.h"
 #include "NostrUtils.h"
+#include "NostrPool.h"
 #include <initializer_list>
 #include <vector>
 namespace nostr {
+
+
+
+struct PaymentReceivedParams {
+    unsigned long long amount;
+    NostrString paymentHash;
+    NostrString sender;
+
+    PaymentReceivedParams() : amount(0), paymentHash(""), sender("") {}
+    PaymentReceivedParams(const PaymentReceivedParams& other) 
+        : amount(other.amount), paymentHash(other.paymentHash), sender(other.sender) {}
+    ~PaymentReceivedParams() {}
+};
+
+struct PaymentSentParams {
+    unsigned long long amount;
+    NostrString paymentHash;
+    NostrString recipient;
+
+    PaymentSentParams() : amount(0), paymentHash(""), recipient("") {}
+    PaymentSentParams(const PaymentSentParams& other) 
+        : amount(other.amount), paymentHash(other.paymentHash), recipient(other.recipient) {}
+    ~PaymentSentParams() {}
+};
+
+struct Nip47Notification {
+    NostrString method;
+    union {
+        PaymentReceivedParams paymentReceived;
+        PaymentSentParams paymentSent;
+    };
+    enum class ActiveMember { None, PaymentReceived, PaymentSent } active;
+
+    // Default constructor: Initializes with no active member
+    Nip47Notification() : method(""), active(ActiveMember::None) {
+        // Explicitly initialize paymentReceived to avoid undefined state
+        new (&paymentReceived) PaymentReceivedParams();
+    }
+
+    // Constructor for payment_received
+    Nip47Notification(const NostrString& m, const PaymentReceivedParams& pr) 
+        : method(m), active(ActiveMember::PaymentReceived) {
+        new (&paymentReceived) PaymentReceivedParams(pr);
+    }
+
+    // Constructor for payment_sent
+    Nip47Notification(const NostrString& m, const PaymentSentParams& ps) 
+        : method(m), active(ActiveMember::PaymentSent) {
+        new (&paymentSent) PaymentSentParams(ps);
+    }
+
+    // Copy constructor
+    Nip47Notification(const Nip47Notification& other) : method(other.method), active(other.active) {
+        switch (active) {
+            case ActiveMember::PaymentReceived:
+                new (&paymentReceived) PaymentReceivedParams(other.paymentReceived);
+                break;
+            case ActiveMember::PaymentSent:
+                new (&paymentSent) PaymentSentParams(other.paymentSent);
+                break;
+            case ActiveMember::None:
+                new (&paymentReceived) PaymentReceivedParams(); // Default state
+                break;
+        }
+    }
+
+    // Destructor
+    ~Nip47Notification() {
+        switch (active) {
+            case ActiveMember::PaymentReceived:
+                paymentReceived.~PaymentReceivedParams();
+                break;
+            case ActiveMember::PaymentSent:
+                paymentSent.~PaymentSentParams();
+                break;
+            case ActiveMember::None:
+                paymentReceived.~PaymentReceivedParams(); // Clean up default state
+                break;
+        }
+    }
+
+    // Assignment operator
+    Nip47Notification& operator=(const Nip47Notification& other) {
+        if (this != &other) {
+            this->~Nip47Notification(); // Destroy current state
+            method = other.method;
+            active = other.active;
+            switch (active) {
+                case ActiveMember::PaymentReceived:
+                    new (&paymentReceived) PaymentReceivedParams(other.paymentReceived);
+                    break;
+                case ActiveMember::PaymentSent:
+                    new (&paymentSent) PaymentSentParams(other.paymentSent);
+                    break;
+                case ActiveMember::None:
+                    new (&paymentReceived) PaymentReceivedParams();
+                    break;
+            }
+        }
+        return *this;
+    }
+};
 
 typedef struct s_Invoice {
     NostrString invoice;
@@ -153,6 +256,8 @@ class Nip47 {
     void parseResponse(SignedNostrEvent *response, Nip47Response<ListTransactionsResponse> &out);
     void parseResponse(SignedNostrEvent *response, Nip47Response<GetBalanceResponse> &out);
     void parseResponse(SignedNostrEvent *response, Nip47Response<GetInfoResponse> &out);
+    void subscribeToNotifications(NostrPool& pool, NostrString userPubKey, std::function<void(Nip47Notification)> onNotification);
+    void handleNotification(SignedNostrEvent* event);
     static void parseNWC(NostrString, NWCData &);
 
   private:
@@ -160,6 +265,7 @@ class Nip47 {
     NostrString userPrivKey;
     Nip04 nip04;
     SignedNostrEvent createEvent(NostrString method, JsonDocument doc);
+    std::function<void(Nip47Notification)> notificationCallback;
 };
 } 
 
