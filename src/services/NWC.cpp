@@ -227,7 +227,7 @@ void NWC::subscribeNotifications(std::function<void(NotificationResponse)> onRes
             } else {
                 if (onRes) onRes(resp.result);
             }
-            delete event;
+            // Removed: delete event; // Pool likely manages this memory
         },
         [onErr](const NostrString &subId, const NostrString &reason) {
             Utils::log("Notification subscription closed: " + reason);
