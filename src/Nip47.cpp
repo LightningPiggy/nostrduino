@@ -502,26 +502,6 @@ SignedNostrEvent Nip47::subscribeNotifications() {
     return this->createEvent("subscribe_notifications", doc); // Kind 23194 event
 }
 
-/*
-void Nip47::subscribeToNotifications(NostrPool& pool, NostrString userPubKey, std::function<void(Nip47Notification)> onNotification) {
-    this->notificationCallback = onNotification;
-    pool.subscribeMany(
-        {pool.getRelays()[0]},
-        {{{"kinds", {"23196"}}, {"#p", {userPubKey}}}},
-        [this](const NostrString& subId, SignedNostrEvent* event) {
-            this->handleNotification(event);
-        },
-        [](const NostrString& subId, const NostrString& reason) {
-            Utils::log("Notification subscription closed: " + reason);
-        },
-        [](const NostrString& subId) {
-            Utils::log("Notification subscription EOS");
-        }
-    );
-    Utils::log("Subscribed to NIP-47 notifications for pubkey: " + userPubKey);
-}
-*/
-
 void Nip47::parseResponse(SignedNostrEvent *response, Nip47Response<NotificationResponse> &out) {
     out.errorCode = "";
     out.errorMessage = "";
