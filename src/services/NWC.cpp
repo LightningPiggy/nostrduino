@@ -30,7 +30,7 @@ void NWC::loop() {
     this->pool->loop();
     for (auto it = this->callbacks.begin(); it != this->callbacks.end();) {
         unsigned int currentN = it->get()->n;
-        bool isPersistent = (currentN == static_cast<unsigned int>(-1));
+        bool noTimeout = (currentN == -1);
 
         if (currentN == 0) {
             NostrString subId = it->get()->subId;
@@ -39,7 +39,7 @@ void NWC::loop() {
             continue;
         }
 
-        if (!isPersistent && Utils::unixTimeSeconds() - it->get()->timestampSeconds > 60 * 10) {
+        if (!noTimeout && Utils::unixTimeSeconds() - it->get()->timestampSeconds > 60 * 10) {
             NostrString subId = it->get()->subId;
             this->pool->closeSubscription(subId);
             it->get()->onErr("OTHER", "timeout");
