@@ -18,7 +18,6 @@ class NWCResponseCallbackBase {
   public:
     virtual ~NWCResponseCallbackBase() = default;
     virtual void call(Nip47 *nip47, SignedNostrEvent *ev) {}
-    virtual unsigned int getN() const = 0; // Added to access n polymorphically
     std::function<void(NostrString, NostrString)> onErr = nullptr;
     unsigned long long timestampSeconds;
     NostrString eventId;
@@ -41,7 +40,6 @@ template <typename T> class NWCResponseCallback : public NWCResponseCallbackBase
             }
         }
     }
-    unsigned int getN() const override { return n; } // Implement getN()
     std::function<void(T)> onRes = nullptr;
 };
 
