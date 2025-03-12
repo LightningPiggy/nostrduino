@@ -11,7 +11,9 @@
 #include "NostrTransport.h"
 #include "NostrUtils.h"
 
+
 namespace nostr {
+
 class NWCResponseCallbackBase {
   public:
     virtual ~NWCResponseCallbackBase() = default;
@@ -40,6 +42,32 @@ template <typename T> class NWCResponseCallback : public NWCResponseCallbackBase
     }
     std::function<void(T)> onRes = nullptr;
 };
+
+/*
+struct NWCResponseCallbackBase {
+    virtual ~NWCResponseCallbackBase() = default;
+    virtual void call(Nip47 *nip47, SignedNostrEvent *event) = 0;
+};
+
+template <typename T>
+struct NWCResponseCallback : public NWCResponseCallbackBase {
+    std::function<void(T)> onRes;
+    std::function<void(NostrString, NostrString)> onErr;
+    unsigned long timestampSeconds;
+    NostrString eventId;
+    int n;
+    NostrString subId;
+    void call(Nip47 *nip47, SignedNostrEvent *event) { // Assumed method
+        Nip47Response<T> out;
+        nip47->parseResponse(event, out);
+        if (NostrString_length(out.errorCode) > 0) {
+            if (onErr) onErr(out.errorCode, out.errorMessage);
+        } else {
+            if (onRes) onRes(out.result);
+        }
+    }
+};
+*/
 
 /**
  * A class to interact with the Nostr Wallet Connect services without dealing with the underlying transport
@@ -158,7 +186,7 @@ class NWC {
      */
     void getInfo(std::function<void(GetInfoResponse)> onRes = nullptr, std::function<void(NostrString, NostrString)> onErr = nullptr);
 
-    void subscribeToNotifications(std::function<void(nostr::Nip47Notification)> onNotification);
+    void subscribeNotifications(std::function<void(NotificationResponse)> onRes, std::function<void(NostrString, NostrString)> onErr);
 
   private:
     Transport *transport;

@@ -495,6 +495,14 @@ void Nip47::parseNWC(NostrString nwc, NWCData &data) {
     }
 }
 
+SignedNostrEvent Nip47::subscribeNotifications() {
+    JsonDocument doc;
+    JsonObject params = doc["params"].to<JsonObject>();
+    // No specific params needed for subscription per NIP-47
+    return this->createEvent("subscribe_notifications", doc); // Kind 23194 event
+}
+
+/*
 void Nip47::subscribeToNotifications(NostrPool& pool, NostrString userPubKey, std::function<void(Nip47Notification)> onNotification) {
     this->notificationCallback = onNotification;
     pool.subscribeMany(
@@ -512,51 +520,64 @@ void Nip47::subscribeToNotifications(NostrPool& pool, NostrString userPubKey, st
     );
     Utils::log("Subscribed to NIP-47 notifications for pubkey: " + userPubKey);
 }
+*/
 
-void Nip47::handleNotification(SignedNostrEvent* event) {
-    if (event->getKind() != 23196) {
-        Utils::log("Unexpected event kind in notification handler: " + NostrString_intToString(event->getKind()));
+void Nip47::parseResponse(SignedNostrEvent *response, Nip47Response<NotificationResponse> &out) {
+    out.errorCode = "";
+    out.errorMessage = "";
+    out.resultType = ""; // Initialize resultType
+    Utils::log("NWC: received notification response");
+
+    if (response->getKind() != 23196) {
+        out.errorCode = "INVALID_KIND";
+        out.errorMessage = "Unexpected event kind: " + NostrString_intToString(response->getKind());
         return;
     }
 
-    if (!event->verify()) {
-        Utils::log("Notification event verification failed");
+    if (!response->verify()) {
+        out.errorCode = "VERIFICATION_FAILED";
+        out.errorMessage = "Notification event verification failed";
         return;
     }
 
     NostrString content;
     try {
-        content = this->nip04.decrypt(this->userPrivKey, this->servicePubKey, event->getContent());
+        content = this->nip04.decrypt(this->userPrivKey, this->servicePubKey, response->getContent());
     } catch (const std::exception& e) {
-        Utils::log("Failed to decrypt notification content: " + NostrString(e.what()));
+        out.errorCode = "DECRYPTION_FAILED";
+        out.errorMessage = "Failed to decrypt notification content: " + NostrString(e.what());
         return;
     }
 
     if (NostrString_length(content) == 0) {
-        Utils::log("Decrypted notification content is empty");
+        out.errorCode = "EMPTY_CONTENT";
+        out.errorMessage = "Decrypted notification content is empty";
         return;
     }
 
     StaticJsonDocument<1024> doc;
     DeserializationError error = deserializeJson(doc, content);
     if (error) {
-        Utils::log("Failed to parse notification JSON: " + NostrString(error.c_str()));
+        out.errorCode = "JSON_PARSE_ERROR";
+        out.errorMessage = "Failed to parse notification JSON: " + NostrString(error.c_str());
         return;
     }
 
     NostrString notificationType = doc["notification_type"] | "";
     if (NostrString_length(notificationType) == 0) {
-        Utils::log("Notification missing 'notification_type' field");
+        out.errorCode = "MISSING_TYPE";
+        out.errorMessage = "Notification missing 'notification_type' field";
         return;
     }
 
     JsonObject notification = doc["notification"];
     if (!notification) {
-        Utils::log("Notification missing 'notification' object");
+        out.errorCode = "MISSING_NOTIFICATION";
+        out.errorMessage = "Notification missing 'notification' object";
         return;
     }
 
-    Nip47Notification nip47Notification = {}; // Aggregate initialization still works
+    Nip47Notification nip47Notification = {};
     nip47Notification.notificationType = notificationType;
     nip47Notification.type = notification["type"] | "";
     nip47Notification.invoice = notification["invoice"] | "";
@@ -569,8 +590,6 @@ void Nip47::handleNotification(SignedNostrEvent* event) {
     nip47Notification.createdAt = notification["created_at"] | 0ULL;
     nip47Notification.settledAt = notification["settled_at"] | 0ULL;
 
-    if (this->notificationCallback) {
-        this->notificationCallback(nip47Notification);
-    }
+    out.resultType = notificationType; // Set resultType to match notification_type
+    out.result.notification = nip47Notification;
 }
-

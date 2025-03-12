@@ -145,6 +145,11 @@ typedef struct s_Nip47Notification {
     unsigned long long settledAt;
 } Nip47Notification;
 
+typedef struct s_NotificationResponse {
+    Nip47Notification notification;
+} NotificationResponse;
+
+
 class Nip47 {
   public:
     Nip47(){};
@@ -159,6 +164,7 @@ class Nip47 {
     SignedNostrEvent listTransactions(unsigned long from = 0, unsigned long until = 0, int limit = 0, int offset = 0, bool unpaid = false, NostrString type = "");
     SignedNostrEvent getBalance();
     SignedNostrEvent getInfo();
+    SignedNostrEvent subscribeNotifications();
 
     void parseResponse(SignedNostrEvent *response, Nip47Response<PayInvoiceResponse> &out);
     void parseResponse(SignedNostrEvent *response, Nip47Response<MultiPayInvoiceResponse> &out);
@@ -169,8 +175,7 @@ class Nip47 {
     void parseResponse(SignedNostrEvent *response, Nip47Response<ListTransactionsResponse> &out);
     void parseResponse(SignedNostrEvent *response, Nip47Response<GetBalanceResponse> &out);
     void parseResponse(SignedNostrEvent *response, Nip47Response<GetInfoResponse> &out);
-    void subscribeToNotifications(NostrPool& pool, NostrString userPubKey, std::function<void(Nip47Notification)> onNotification);
-    void handleNotification(SignedNostrEvent* event);
+    void parseResponse(SignedNostrEvent *response, Nip47Response<NotificationResponse> &out);
     static void parseNWC(NostrString, NWCData &);
 
   private:

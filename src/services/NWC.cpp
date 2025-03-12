@@ -48,20 +48,21 @@ void NWC::loop() {
 
 NostrString NWC::sendEvent(SignedNostrEvent *event) {
     NostrString subId = this->pool->subscribeMany(
-        {this->nwc.relay}, {{{"kinds", {"23195"}}, {"#p", {this->accountPubKey}}, {"#e", {event->getId()}}}},
+        {this->nwc.relay}, {{{"kinds", {"23195", "23196"}}, {"#p", {this->accountPubKey}}, {"#e", {event->getId()}}}}, // Added 23196
         [&](const String &subId, nostr::SignedNostrEvent *event) {
             NostrString eventRef = event->getTags()->getTag("e")[0];
             for (auto it = this->callbacks.begin(); it != this->callbacks.end(); it++) {
                 if (NostrString_equals(it->get()->eventId, eventRef)) {
-                    if (it->get()->n > 0) {
+                    if (it->get()->n != 0) { // Changed from > 0 to != 0 to allow -1
                         it->get()->call(&this->nip47, event);
-                    } 
-                    it->get()->n--;
+                    }
+                    if (it->get()->n > 0) it->get()->n--; // Only decrement if positive
                     break;
                 }
             }
         },
-        [&](const String &subId, const String &reason) { Utils::log("NWC: closed subscription: " + reason); }, [&](const String &subId) { Utils::log("NWC: EOS"); });
+        [&](const String &subId, const String &reason) { Utils::log("NWC: closed subscription: " + reason); }, 
+        [&](const String &subId) { Utils::log("NWC: EOS"); });
     this->pool->publish({this->nwc.relay}, event, [&](const NostrString &eventId, bool status, const NostrString &msg) {
         if (!status) {
             Utils::log("NWC: error sending event: " + msg);
@@ -195,16 +196,27 @@ void NWC::getInfo(std::function<void(GetInfoResponse)> onRes, std::function<void
     this->callbacks.push_back(std::move(callback));
 }
 
-void NWC::subscribeToNotifications(std::function<void(Nip47Notification)> onNotification) {
+void NWC::subscribeNotifications(std::function<void(NotificationResponse)> onRes, 
+                                std::function<void(NostrString, NostrString)> onErr) {
     if (!pool) {
         Utils::log("Cannot subscribe to notifications: Pool is null");
+        if (onErr) onErr("NO_POOL", "Pool is null");
         return;
     }
     if (pool->getRelays().empty()) {
         Utils::log("Cannot subscribe to notifications: No relays connected");
+        if (onErr) onErr("NO_RELAYS", "No relays connected");
         return;
     }
 
-    Utils::log("Subscribing to nip47 notifications...");
-    nip47.subscribeToNotifications(*pool, accountPubKey, onNotification);
+    SignedNostrEvent ev = this->nip47.subscribeNotifications();
+    std::unique_ptr<NWCResponseCallback<NotificationResponse>> callback(new NWCResponseCallback<NotificationResponse>());
+    callback->onRes = onRes;
+    callback->onErr = onErr;
+    callback->timestampSeconds = Utils::unixTimeSeconds();
+    callback->eventId = ev.getId();
+    callback->n = -1; // Persistent subscription
+    callback->subId = this->sendEvent(&ev);
+    this->callbacks.push_back(std::move(callback));
+    Utils::log("Subscribed to notifications with event ID: " + ev.getId());
 }
