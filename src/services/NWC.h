@@ -23,6 +23,7 @@ class NWCResponseCallbackBase {
     unsigned long long timestampSeconds;
     NostrString eventId;
     NostrString subId;
+    unsigned int n = 1;
 };
 
 template <typename T> class NWCResponseCallback : public NWCResponseCallbackBase {
@@ -42,7 +43,6 @@ template <typename T> class NWCResponseCallback : public NWCResponseCallbackBase
     }
     unsigned int getN() const override { return n; } // Implement getN()
     std::function<void(T)> onRes = nullptr;
-    unsigned int n = 1;
 };
 
 /**

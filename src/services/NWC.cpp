@@ -29,7 +29,7 @@ void NWC::close() {
 void NWC::loop() {
     this->pool->loop();
     for (auto it = this->callbacks.begin(); it != this->callbacks.end();) {
-        unsigned int currentN = it->get()->getN();
+        unsigned int currentN = it->get()->n;
         bool isPersistent = (currentN == static_cast<unsigned int>(-1));
 
         if (currentN == 0) {
@@ -39,7 +39,6 @@ void NWC::loop() {
             continue;
         }
 
-        // Apply timeout only to non-persistent callbacks (n > 0)
         if (!isPersistent && Utils::unixTimeSeconds() - it->get()->timestampSeconds > 60 * 10) {
             NostrString subId = it->get()->subId;
             this->pool->closeSubscription(subId);
@@ -58,12 +57,9 @@ NostrString NWC::sendEvent(SignedNostrEvent *event) {
             NostrString eventRef = event->getTags()->getTag("e")[0];
             for (auto it = this->callbacks.begin(); it != this->callbacks.end(); it++) {
                 if (NostrString_equals(it->get()->eventId, eventRef)) {
-                    if (it->get()->getN() != 0) {
+                    if (it->get()->n > 0) { // Only call and decrement if n > 0
                         it->get()->call(&this->nip47, event);
-                        if (it->get()->getN() > 0) {
-                            // Decrement n via a setter or direct access if modifiable
-                            // Since n is in the derived class, we’ll assume it’s handled in call() or externally
-                        }
+                        it->get()->n--;
                     }
                     break;
                 }
@@ -227,7 +223,7 @@ void NWC::subscribeNotifications(std::function<void(NotificationResponse)> onRes
             } else {
                 if (onRes) onRes(resp.result);
             }
-            // Removed: delete event; // Pool likely manages this memory
+            // No delete event here; pool manages it
         },
         [onErr](const NostrString &subId, const NostrString &reason) {
             Utils::log("Notification subscription closed: " + reason);
