@@ -211,7 +211,7 @@ void NWC::subscribeNotifications(std::function<void(NotificationResponse)> onRes
         return;
     }
 
-    notificationSubId = pool->subscribeMany(
+    NostrString notificationSubId = pool->subscribeMany(
         {this->nwc.relay}, {{{"kinds", {"23196"}}, {"#p", {this->accountPubKey}}}},
         [this, onRes, onErr](const NostrString &subId, SignedNostrEvent *event) {
             Nip47Response<NotificationResponse> resp;

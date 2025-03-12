@@ -166,7 +166,6 @@ class NWC {
     void subscribeNotifications(std::function<void(NotificationResponse)> onRes, std::function<void(NostrString, NostrString)> onErr);
 
   private:
-    NostrString notificationSubId;
     Transport *transport;
     NostrString sendEvent(SignedNostrEvent *ev);
     std::unique_ptr<NostrPool> pool;
