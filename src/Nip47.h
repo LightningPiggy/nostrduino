@@ -6,7 +6,6 @@
 #include "NostrEvent.h"
 #include "NostrString.h"
 #include "NostrUtils.h"
-#include "NostrPool.h"
 #include <initializer_list>
 #include <vector>
 namespace nostr {
