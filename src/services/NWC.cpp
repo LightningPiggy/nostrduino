@@ -65,8 +65,7 @@ NostrString NWC::sendEvent(SignedNostrEvent *event) {
                 }
             }
         },
-        [&](const String &subId, const String &reason) { Utils::log("NWC: closed subscription: " + reason); }, 
-        [&](const String &subId) { Utils::log("NWC: EOS"); });
+        [&](const String &subId, const String &reason) { Utils::log("NWC: closed subscription: " + reason); }, [&](const String &subId) { Utils::log("NWC: EOS"); });
     this->pool->publish({this->nwc.relay}, event, [&](const NostrString &eventId, bool status, const NostrString &msg) {
         if (!status) {
             Utils::log("NWC: error sending event: " + msg);
