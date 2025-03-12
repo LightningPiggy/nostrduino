@@ -195,11 +195,16 @@ void NWC::getInfo(std::function<void(GetInfoResponse)> onRes, std::function<void
     this->callbacks.push_back(std::move(callback));
 }
 
-void NWC::subscribeToNotifications(std::function<void(nostr::Nip47Notification)> onNotification) {
-    if (!pool || pool->getRelays().empty()) {
-        Utils::log("Cannot subscribe to notifications: No relays available");
+void NWC::subscribeToNotifications(std::function<void(Nip47Notification)> onNotification) {
+    if (!pool) {
+        Utils::log("Cannot subscribe to notifications: Pool is null");
+        return;
+    }
+    if (pool->getRelays().empty()) {
+        Utils::log("Cannot subscribe to notifications: No relays connected");
         return;
     }
 
+    Utils::log("Subscribing to nip47 notifications...");
     nip47.subscribeToNotifications(*pool, accountPubKey, onNotification);
 }

@@ -11,108 +11,6 @@
 #include <vector>
 namespace nostr {
 
-
-
-struct PaymentReceivedParams {
-    unsigned long long amount;
-    NostrString paymentHash;
-    NostrString sender;
-
-    PaymentReceivedParams() : amount(0), paymentHash(""), sender("") {}
-    PaymentReceivedParams(const PaymentReceivedParams& other) 
-        : amount(other.amount), paymentHash(other.paymentHash), sender(other.sender) {}
-    ~PaymentReceivedParams() {}
-};
-
-struct PaymentSentParams {
-    unsigned long long amount;
-    NostrString paymentHash;
-    NostrString recipient;
-
-    PaymentSentParams() : amount(0), paymentHash(""), recipient("") {}
-    PaymentSentParams(const PaymentSentParams& other) 
-        : amount(other.amount), paymentHash(other.paymentHash), recipient(other.recipient) {}
-    ~PaymentSentParams() {}
-};
-
-struct Nip47Notification {
-    NostrString method;
-    union {
-        PaymentReceivedParams paymentReceived;
-        PaymentSentParams paymentSent;
-    };
-    enum class ActiveMember { None, PaymentReceived, PaymentSent } active;
-
-    // Default constructor: Initializes with no active member
-    Nip47Notification() : method(""), active(ActiveMember::None) {
-        // Explicitly initialize paymentReceived to avoid undefined state
-        new (&paymentReceived) PaymentReceivedParams();
-    }
-
-    // Constructor for payment_received
-    Nip47Notification(const NostrString& m, const PaymentReceivedParams& pr) 
-        : method(m), active(ActiveMember::PaymentReceived) {
-        new (&paymentReceived) PaymentReceivedParams(pr);
-    }
-
-    // Constructor for payment_sent
-    Nip47Notification(const NostrString& m, const PaymentSentParams& ps) 
-        : method(m), active(ActiveMember::PaymentSent) {
-        new (&paymentSent) PaymentSentParams(ps);
-    }
-
-    // Copy constructor
-    Nip47Notification(const Nip47Notification& other) : method(other.method), active(other.active) {
-        switch (active) {
-            case ActiveMember::PaymentReceived:
-                new (&paymentReceived) PaymentReceivedParams(other.paymentReceived);
-                break;
-            case ActiveMember::PaymentSent:
-                new (&paymentSent) PaymentSentParams(other.paymentSent);
-                break;
-            case ActiveMember::None:
-                new (&paymentReceived) PaymentReceivedParams(); // Default state
-                break;
-        }
-    }
-
-    // Destructor
-    ~Nip47Notification() {
-        switch (active) {
-            case ActiveMember::PaymentReceived:
-                paymentReceived.~PaymentReceivedParams();
-                break;
-            case ActiveMember::PaymentSent:
-                paymentSent.~PaymentSentParams();
-                break;
-            case ActiveMember::None:
-                paymentReceived.~PaymentReceivedParams(); // Clean up default state
-                break;
-        }
-    }
-
-    // Assignment operator
-    Nip47Notification& operator=(const Nip47Notification& other) {
-        if (this != &other) {
-            this->~Nip47Notification(); // Destroy current state
-            method = other.method;
-            active = other.active;
-            switch (active) {
-                case ActiveMember::PaymentReceived:
-                    new (&paymentReceived) PaymentReceivedParams(other.paymentReceived);
-                    break;
-                case ActiveMember::PaymentSent:
-                    new (&paymentSent) PaymentSentParams(other.paymentSent);
-                    break;
-                case ActiveMember::None:
-                    new (&paymentReceived) PaymentReceivedParams();
-                    break;
-            }
-        }
-        return *this;
-    }
-};
-
 typedef struct s_Invoice {
     NostrString invoice;
     unsigned long amount;
@@ -231,6 +129,20 @@ typedef struct s_NWCData {
     NostrString pubkey;
     NostrString secret;
 } NWCData;
+
+
+struct Nip47Notification {
+    NostrString notificationType;
+    NostrString type;
+    NostrString invoice;
+    NostrString description;
+    NostrString preimage;
+    NostrString paymentHash;
+    unsigned long long amount;
+    unsigned long long feesPaid;
+    unsigned long long createdAt;
+    unsigned long long settledAt;
+};
 
 class Nip47 {
   public:
