@@ -199,8 +199,7 @@ void NWC::getInfo(std::function<void(GetInfoResponse)> onRes, std::function<void
     this->callbacks.push_back(std::move(callback));
 }
 
-void NWC::subscribeNotifications(std::function<void(NotificationResponse)> onRes, 
-                                std::function<void(NostrString, NostrString)> onErr) {
+void NWC::subscribeNotifications(std::function<void(NotificationResponse)> onRes, std::function<void(NostrString, NostrString)> onErr) {
     if (!pool) {
         Utils::log("Cannot subscribe to notifications: Pool is null");
         if (onErr) onErr("NO_POOL", "Pool is null");
