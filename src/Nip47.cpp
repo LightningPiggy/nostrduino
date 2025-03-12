@@ -556,11 +556,12 @@ void Nip47::handleNotification(SignedNostrEvent* event) {
         return;
     }
 
-    Nip47Notification nip47Notification;
+    Nip47Notification nip47Notification = {}; // Aggregate initialization still works
     nip47Notification.notificationType = notificationType;
     nip47Notification.type = notification["type"] | "";
     nip47Notification.invoice = notification["invoice"] | "";
     nip47Notification.description = notification["description"] | "";
+    nip47Notification.descriptionHash = notification["description_hash"] | "";
     nip47Notification.preimage = notification["preimage"] | "";
     nip47Notification.paymentHash = notification["payment_hash"] | "";
     nip47Notification.amount = notification["amount"] | 0ULL;
@@ -572,5 +573,4 @@ void Nip47::handleNotification(SignedNostrEvent* event) {
         this->notificationCallback(nip47Notification);
     }
 }
-
 

@@ -131,18 +131,19 @@ typedef struct s_NWCData {
 } NWCData;
 
 
-struct Nip47Notification {
+typedef struct s_Nip47Notification {
     NostrString notificationType;
     NostrString type;
     NostrString invoice;
     NostrString description;
+    NostrString descriptionHash;
     NostrString preimage;
     NostrString paymentHash;
     unsigned long long amount;
     unsigned long long feesPaid;
     unsigned long long createdAt;
     unsigned long long settledAt;
-};
+} Nip47Notification;
 
 class Nip47 {
   public:
