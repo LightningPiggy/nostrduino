@@ -11,9 +11,7 @@
 #include "NostrTransport.h"
 #include "NostrUtils.h"
 
-
 namespace nostr {
-
 class NWCResponseCallbackBase {
   public:
     virtual ~NWCResponseCallbackBase() = default;
@@ -160,6 +158,11 @@ class NWC {
      */
     void getInfo(std::function<void(GetInfoResponse)> onRes = nullptr, std::function<void(NostrString, NostrString)> onErr = nullptr);
 
+    /**
+     * Subscribe to payment notifications
+     * @param onRes A callback that will be called when a payment notification is received
+     * @param onErr A callback that will be called when an error is received (optional)
+     */
     void subscribeNotifications(std::function<void(NotificationResponse)> onRes, std::function<void(NostrString, NostrString)> onErr);
 
   private:
