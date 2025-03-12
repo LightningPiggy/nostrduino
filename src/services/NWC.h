@@ -11,6 +11,8 @@
 #include "NostrTransport.h"
 #include "NostrUtils.h"
 
+#define NWC_DEFAULT_TIMEOUT (60 * 10) // 10 minutes in seconds
+
 namespace nostr {
 class NWCResponseCallbackBase {
   public:
@@ -18,6 +20,7 @@ class NWCResponseCallbackBase {
     virtual void call(Nip47 *nip47, SignedNostrEvent *ev) {}
     std::function<void(NostrString, NostrString)> onErr = nullptr;
     unsigned long long timestampSeconds;
+    unsigned int timeoutSeconds = NWC_DEFAULT_TIMEOUT;
     NostrString eventId;
     NostrString subId;
     unsigned int n = 1;

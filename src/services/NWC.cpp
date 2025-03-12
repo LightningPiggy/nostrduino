@@ -1,6 +1,8 @@
 #include "NWC.h"
-
 #include "Nip47.h"
+
+#define NWC_INFINITE_TIMEOUT (0xFFFFFFFF) // Max unsigned int, ~136 years
+
 using namespace nostr;
 
 NWC::~NWC() {
@@ -30,7 +32,6 @@ void NWC::loop() {
     this->pool->loop();
     for (auto it = this->callbacks.begin(); it != this->callbacks.end();) {
         unsigned int currentN = it->get()->n;
-        bool noTimeout = (currentN == -1);
 
         if (currentN == 0) {
             NostrString subId = it->get()->subId;
@@ -39,7 +40,8 @@ void NWC::loop() {
             continue;
         }
 
-        if (!noTimeout && Utils::unixTimeSeconds() - it->get()->timestampSeconds > 60 * 10) {
+        unsigned int timeoutSeconds = it->get()->timeoutSeconds;
+        if (timeoutSeconds != NWC_INFINITE_TIMEOUT && Utils::unixTimeSeconds() - it->get()->timestampSeconds > timeoutSeconds) {
             NostrString subId = it->get()->subId;
             this->pool->closeSubscription(subId);
             it->get()->onErr("OTHER", "timeout");
@@ -49,6 +51,7 @@ void NWC::loop() {
         }
     }
 }
+
 
 NostrString NWC::sendEvent(SignedNostrEvent *event) {
     NostrString subId = this->pool->subscribeMany(
