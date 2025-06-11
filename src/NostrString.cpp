@@ -1,4 +1,5 @@
-
+#include <sstream> // Add for std::istringstream
+#include <algorithm> // Add this for std::remove_if
 #include <NostrString.h>
 
 #ifdef ARDUINO
@@ -183,20 +184,28 @@ std::string NostrString_urlDecode(const std::string &encoded) {
 std::string NostrString_fromUInt(unsigned long long i) {
     return std::to_string(i);
 }
+// Custom function to convert a character to a two-digit hexadecimal string
+std::string charToHex(unsigned char ch) {
+    const char hexDigits[] = "0123456789ABCDEF";
+    std::string hex;
+    hex += hexDigits[(ch >> 4) & 0xF]; // High nibble
+    hex += hexDigits[ch & 0xF];        // Low nibble
+    return hex;
+}
+
 std::string NostrString_urlEncode(const std::string &str) {
-    std::string encoded = "";
+    std::string encoded;
     for (unsigned int i = 0; i < str.length(); i++) {
-        char ch = str[i];
+        unsigned char ch = str[i]; // Use unsigned char to avoid sign-extension
         if (isalnum(ch) || ch == '-' || ch == '_' || ch == '.' || ch == '~') {
             encoded += ch;
         } else {
             encoded += '%';
-            encoded += std::to_string((int)ch, 16);
+            encoded += charToHex(ch);
         }
     }
     return encoded;
 }
-
 double NostrString_toFloat(const std::string &str) {
     return std::stod(str);
 }

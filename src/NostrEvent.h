@@ -12,7 +12,7 @@
 #include <map>
 #include <vector>
 namespace nostr {
-using EventSubmissionFailureCallback = std::function<void(const String &)>;
+using EventSubmissionFailureCallback = std::function<void(const NostrString &)>;
 
 class SignedNostrEvent;
 

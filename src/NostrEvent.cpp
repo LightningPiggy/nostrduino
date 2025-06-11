@@ -168,7 +168,7 @@ SignedNostrEvent::SignedNostrEvent(JsonArray arr) {
     JsonArray tags = obj["tags"].as<JsonArray>();
     for (size_t i = 0; i < tags.size(); i++) {
         JsonArray tag = tags[i];
-        std::vector<String> value;
+        std::vector<NostrString> value;
         for (size_t j = 1; j < tag.size(); j++) {
             value.push_back(tag[j].as<NostrString>());
         }

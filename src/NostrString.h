@@ -8,6 +8,7 @@
 #include <string>
 
 #define NostrString std::string
+#define byte uint8_t // Define byte as uint8_t for non-Arduino
 #endif
 
 

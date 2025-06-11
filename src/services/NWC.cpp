@@ -71,7 +71,7 @@ NostrString NWC::sendEvent(SignedNostrEvent *eventToSend = nullptr) {
                 }
             }
         },
-        [&](const String &subId, const String &reason) { Utils::log("NWC: closed subscription: " + reason); }, [&](const String &subId) { Utils::log("NWC: EOS"); });
+        [&](const NostrString &subId, const NostrString &reason) { Utils::log("NWC: closed subscription: " + reason); }, [&](const NostrString &subId) { Utils::log("NWC: EOS"); });
 
     // Publish event, if provided
     if (eventToSend) {
